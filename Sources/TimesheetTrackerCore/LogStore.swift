@@ -34,7 +34,15 @@ public final class LogStore {
         try ensureLogsDirectory()
         var dayLog = try readDay(day)
         dayLog.entries.append(entry)
-        let data = try JSONEncoder.timesheet.encode(dayLog)
-        try data.write(to: fileURL(forDay: day), options: .atomic)
+        try writeDay(dayLog)
+    }
+
+    /// Overwrite a day's file with the given DayLog (sorted by start time).
+    public func writeDay(_ dayLog: DayLog) throws {
+        try ensureLogsDirectory()
+        let sorted = DayLog(date: dayLog.date,
+                            entries: dayLog.entries.sorted { $0.start < $1.start })
+        let data = try JSONEncoder.timesheet.encode(sorted)
+        try data.write(to: fileURL(forDay: sorted.date), options: .atomic)
     }
 }

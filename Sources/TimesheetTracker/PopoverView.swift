@@ -82,6 +82,14 @@ struct TodayList: View {
     let now: Date
     @State private var entries: [Entry] = []
     @State private var dailyTotal: TimeInterval = 0
+    @State private var editing: EditTarget?
+    @State private var refreshTick = 0
+
+    private struct EditTarget: Identifiable {
+        let id = UUID()
+        let day: String
+        let mode: EntryEditorSheet.Mode
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -89,12 +97,22 @@ struct TodayList: View {
                 Text("Today").font(.subheadline).bold()
                 Spacer()
                 Text(formatDuration(dailyTotal)).monospacedDigit().foregroundStyle(.secondary)
+                Button {
+                    editing = EditTarget(day: tracker.localDateString(for: Date()), mode: .create)
+                } label: {
+                    Image(systemName: "plus.circle")
+                }
+                .buttonStyle(.borderless)
+                .help("Add a past entry for today")
             }
             if entries.isEmpty && tracker.runningTask == nil {
                 Text("No entries yet today").foregroundStyle(.secondary).font(.callout)
             } else {
                 ForEach(entries.indices, id: \.self) { i in
-                    EntryRow(entry: entries[i])
+                    EntryRow(entry: entries[i]) {
+                        editing = EditTarget(day: tracker.localDateString(for: entries[i].start),
+                                             mode: .edit(original: entries[i]))
+                    }
                 }
                 if let task = tracker.runningTask, let since = tracker.runningSince {
                     HStack {
@@ -112,7 +130,13 @@ struct TodayList: View {
         }
         .onAppear { refresh() }
         .onChange(of: tracker.runningTask) { _, _ in refresh() }
+        .onChange(of: refreshTick) { _, _ in refresh() }
         .onReceive(Timer.publish(every: 5, on: .main, in: .common).autoconnect()) { _ in refresh() }
+        .sheet(item: $editing) { target in
+            EntryEditorSheet(day: target.day, mode: target.mode) {
+                refreshTick &+= 1
+            }
+        }
     }
 
     private func refresh() {
@@ -134,15 +158,20 @@ struct TodayList: View {
 
 struct EntryRow: View {
     let entry: Entry
+    let onTap: () -> Void
     var body: some View {
-        HStack {
-            Text(timeOnly(entry.start)).monospacedDigit().foregroundStyle(.secondary)
-            Text("–").foregroundStyle(.secondary)
-            Text(timeOnly(entry.stop)).monospacedDigit().foregroundStyle(.secondary)
-            Text(entry.task).lineLimit(1)
-            Spacer()
-            Text(formatDuration(entry.duration)).monospacedDigit().foregroundStyle(.secondary)
+        Button(action: onTap) {
+            HStack {
+                Text(timeOnly(entry.start)).monospacedDigit().foregroundStyle(.secondary)
+                Text("–").foregroundStyle(.secondary)
+                Text(timeOnly(entry.stop)).monospacedDigit().foregroundStyle(.secondary)
+                Text(entry.task).lineLimit(1).foregroundStyle(.primary)
+                Spacer()
+                Text(formatDuration(entry.duration)).monospacedDigit().foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .font(.callout)
     }
     private func timeOnly(_ d: Date) -> String {

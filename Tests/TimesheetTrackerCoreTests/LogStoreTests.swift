@@ -56,6 +56,28 @@ final class LogStoreTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: tempDir.appendingPathComponent("logs").path))
     }
 
+    func test_writeDayReplacesAllEntries() throws {
+        let t = Date(timeIntervalSince1970: 1_715_400_000)
+        try store.append(Entry(task: "old1", start: t, stop: t.addingTimeInterval(60)), toDay: "2026-05-11")
+        try store.append(Entry(task: "old2", start: t.addingTimeInterval(60), stop: t.addingTimeInterval(120)), toDay: "2026-05-11")
+        let replacement = DayLog(date: "2026-05-11", entries: [
+            Entry(task: "new", start: t, stop: t.addingTimeInterval(30)),
+        ])
+        try store.writeDay(replacement)
+        let day = try store.readDay("2026-05-11")
+        XCTAssertEqual(day.entries.count, 1)
+        XCTAssertEqual(day.entries.first?.task, "new")
+    }
+
+    func test_writeDaySortsEntriesByStart() throws {
+        let t = Date(timeIntervalSince1970: 1_715_400_000)
+        let later = Entry(task: "B", start: t.addingTimeInterval(60), stop: t.addingTimeInterval(120))
+        let earlier = Entry(task: "A", start: t, stop: t.addingTimeInterval(30))
+        try store.writeDay(DayLog(date: "2026-05-11", entries: [later, earlier]))
+        let day = try store.readDay("2026-05-11")
+        XCTAssertEqual(day.entries.map(\.task), ["A", "B"])
+    }
+
     func test_corruptJSONThrowsReadableError() throws {
         let logsDir = tempDir.appendingPathComponent("logs")
         try FileManager.default.createDirectory(at: logsDir, withIntermediateDirectories: true)

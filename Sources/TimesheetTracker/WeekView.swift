@@ -3,39 +3,72 @@ import TimesheetTrackerCore
 
 struct WeekView: View {
     @EnvironmentObject var tracker: Tracker
-    @State private var summary: WeekAggregation.WeekSummary = .init(days: [])
+    @State private var window: [String] = []
+    @State private var dayLogs: [String: DayLog] = [:]
+    @State private var editing: EditTarget?
+    @State private var refreshTick = 0
+
+    private struct EditTarget: Identifiable {
+        let id = UUID()
+        let day: String
+        let mode: EntryEditorSheet.Mode
+    }
+
+    var weekTotal: TimeInterval {
+        window.reduce(0.0) { acc, day in
+            acc + (dayLogs[day]?.entries.reduce(0.0) { $0 + $1.duration } ?? 0)
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            if summary.days.isEmpty {
+            if window.isEmpty {
                 Text("Loading…").foregroundStyle(.secondary)
             } else {
-                ForEach(summary.days, id: \.date) { day in
-                    DayRow(day: day)
+                ForEach(window, id: \.self) { day in
+                    DayRow(day: day, entries: dayLogs[day]?.entries ?? []) { entry in
+                        editing = EditTarget(day: day, mode: .edit(original: entry))
+                    } onAdd: {
+                        editing = EditTarget(day: day, mode: .create)
+                    }
                 }
                 Divider()
                 HStack {
                     Text("Week total").bold()
                     Spacer()
-                    Text(formatDuration(summary.totalSeconds)).monospacedDigit()
+                    Text(formatDuration(weekTotal)).monospacedDigit()
                 }
                 .font(.callout)
             }
         }
         .onAppear { refresh() }
+        .onChange(of: refreshTick) { _, _ in refresh() }
+        .sheet(item: $editing) { target in
+            EntryEditorSheet(day: target.day, mode: target.mode) {
+                refreshTick &+= 1
+            }
+        }
     }
 
     private func refresh() {
         let store = LogStore(rootDirectory: AppPaths.applicationSupportDirectory)
-        let window = WeekAggregation.fridayToThursdayWindow(endingOn: Date())
-        let days = window.compactMap { try? store.readDay($0) }
-        summary = WeekAggregation.summarize(days: days, window: window)
+        window = WeekAggregation.fridayToThursdayWindow(endingOn: Date())
+        var logs: [String: DayLog] = [:]
+        for day in window {
+            if let log = try? store.readDay(day) { logs[day] = log }
+        }
+        dayLogs = logs
     }
 }
 
 private struct DayRow: View {
-    let day: WeekAggregation.DaySummary
+    let day: String
+    let entries: [Entry]
+    let onEdit: (Entry) -> Void
+    let onAdd: () -> Void
     @State private var expanded = false
+
+    var dayTotal: TimeInterval { entries.reduce(0.0) { $0 + $1.duration } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
@@ -46,24 +79,45 @@ private struct DayRow: View {
                     HStack(spacing: 4) {
                         Image(systemName: expanded ? "chevron.down" : "chevron.right")
                             .font(.caption2)
-                        Text(formatDate(day.date))
+                        Text(formatDate(day))
                     }
                 }
                 .buttonStyle(.borderless)
                 Spacer()
-                Text(formatDuration(day.totalSeconds)).monospacedDigit().foregroundStyle(.secondary)
+                Text(formatDuration(dayTotal)).monospacedDigit().foregroundStyle(.secondary)
             }
             .font(.callout)
 
             if expanded {
-                ForEach(day.tasks, id: \.task) { t in
-                    HStack {
-                        Text("  • \(t.task)").foregroundStyle(.secondary).lineLimit(1)
-                        Spacer()
-                        Text(formatDuration(t.totalSeconds))
-                            .monospacedDigit().foregroundStyle(.secondary)
+                if entries.isEmpty {
+                    Text("  No entries").foregroundStyle(.secondary).font(.caption)
+                } else {
+                    ForEach(entries.indices, id: \.self) { i in
+                        Button {
+                            onEdit(entries[i])
+                        } label: {
+                            HStack {
+                                Text("  " + timeOnly(entries[i].start))
+                                    .monospacedDigit().foregroundStyle(.secondary)
+                                Text("–").foregroundStyle(.secondary)
+                                Text(timeOnly(entries[i].stop))
+                                    .monospacedDigit().foregroundStyle(.secondary)
+                                Text(entries[i].task).lineLimit(1).foregroundStyle(.primary)
+                                Spacer()
+                                Text(formatDuration(entries[i].duration))
+                                    .monospacedDigit().foregroundStyle(.secondary)
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .font(.caption)
                     }
-                    .font(.caption)
+                }
+                HStack {
+                    Spacer()
+                    Button("+ Add entry", action: onAdd)
+                        .buttonStyle(.borderless)
+                        .font(.caption)
                 }
             }
         }
@@ -74,5 +128,8 @@ private struct DayRow: View {
         guard let date = inFmt.date(from: ymd) else { return ymd }
         let outFmt = DateFormatter(); outFmt.dateFormat = "EEE d MMM"
         return outFmt.string(from: date)
+    }
+    private func timeOnly(_ d: Date) -> String {
+        let f = DateFormatter(); f.dateFormat = "HH:mm"; return f.string(from: d)
     }
 }
