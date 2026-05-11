@@ -52,8 +52,10 @@ final class TrackerHost {
 
         tickTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                self?.tracker.tickIfMidnightCrossed()
-                self?.tracker.applyAutoStopIfDue()
+                guard let self else { return }
+                self.tracker.tickIfMidnightCrossed()
+                NotificationScheduler.shared.checkAndFire(runningTask: self.tracker.runningTask)
+                self.tracker.applyAutoStopIfDue()
             }
         }
 
@@ -61,8 +63,10 @@ final class TrackerHost {
             forName: NSWorkspace.didWakeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                self?.tracker.tickIfMidnightCrossed()
-                self?.tracker.applyAutoStopIfDue()
+                guard let self else { return }
+                self.tracker.tickIfMidnightCrossed()
+                NotificationScheduler.shared.checkAndFire(runningTask: self.tracker.runningTask)
+                self.tracker.applyAutoStopIfDue()
             }
         }
     }

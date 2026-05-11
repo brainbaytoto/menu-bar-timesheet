@@ -33,17 +33,23 @@ struct EntryEditorSheet: View {
         case .create:
             let cal = Calendar.current
             let now = Date()
-            // For "today", default to 1h ago → now. For past days, default to 9am–10am.
             let nowDay = cal.startOfDay(for: now)
             let isToday = cal.isDate(dayStart, inSameDayAs: nowDay)
+            let prefs = PreferencesStore.shared
+            let workStart = prefs.defaultWorkdayStartHourMinute
+            let workStop = prefs.defaultWorkdayStopHourMinute
             let defaultStart: Date
             let defaultStop: Date
             if isToday {
+                // For today, default to 1h ago → now (likely a "just forgot to hit Start" case).
                 defaultStop = now
                 defaultStart = cal.date(byAdding: .hour, value: -1, to: now) ?? now
             } else {
-                defaultStart = cal.date(bySettingHour: 9, minute: 0, second: 0, of: dayStart) ?? dayStart
-                defaultStop = cal.date(bySettingHour: 10, minute: 0, second: 0, of: dayStart) ?? dayStart
+                // Past day: default to the user's configured workday window.
+                defaultStart = cal.date(bySettingHour: workStart.hour, minute: workStart.minute,
+                                         second: 0, of: dayStart) ?? dayStart
+                defaultStop = cal.date(bySettingHour: workStop.hour, minute: workStop.minute,
+                                        second: 0, of: dayStart) ?? dayStart
             }
             _taskName = State(initialValue: "")
             _startTime = State(initialValue: defaultStart)
