@@ -50,6 +50,8 @@ final class TrackerHost {
         tracker = Tracker(store: store, sidecar: sidecar, clock: SystemClock(),
                           preferences: PreferencesStore.shared)
 
+        TrackerHost.upgradeExistingDayFiles(store: store, root: root)
+
         tickTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 guard let self else { return }
@@ -67,6 +69,21 @@ final class TrackerHost {
                 self.tracker.tickIfMidnightCrossed()
                 NotificationScheduler.shared.checkAndFire(runningTask: self.tracker.runningTask)
                 self.tracker.applyAutoStopIfDue()
+            }
+        }
+    }
+
+    /// Rewrite every existing per-day log file via writeDay so the new "total"
+    /// field is added. Idempotent — re-running it is harmless.
+    private static func upgradeExistingDayFiles(store: LogStore, root: URL) {
+        let logsDir = root.appendingPathComponent("logs")
+        guard let urls = try? FileManager.default.contentsOfDirectory(
+            at: logsDir, includingPropertiesForKeys: nil
+        ) else { return }
+        for url in urls where url.pathExtension == "json" {
+            let day = url.deletingPathExtension().lastPathComponent
+            if let log = try? store.readDay(day) {
+                try? store.writeDay(log)
             }
         }
     }
