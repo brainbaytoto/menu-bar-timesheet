@@ -31,11 +31,11 @@ struct PreferencesView: View {
                             PreferencesStore.shared.autoStopEnabled = new
                         }
                     HStack {
-                        Text("End-of-day time (HH:MM, 24h):")
-                        TextField("", text: $autoStopTime)
-                            .frame(width: 80)
-                            .disabled(!autoStopEnabled)
-                            .onSubmit { PreferencesStore.shared.autoStopTime = autoStopTime }
+                        Text("End-of-day time (24h):")
+                        TimeField(hhmm: $autoStopTime, isEnabled: autoStopEnabled)
+                            .onChange(of: autoStopTime) { _, new in
+                                PreferencesStore.shared.autoStopTime = new
+                            }
                         Spacer()
                     }
                 }
@@ -62,13 +62,15 @@ struct PreferencesView: View {
                         .font(.caption).foregroundStyle(.secondary)
                     HStack(spacing: 12) {
                         Text("Start")
-                        TextField("", text: $workdayStart)
-                            .frame(width: 80)
-                            .onSubmit { PreferencesStore.shared.defaultWorkdayStart = workdayStart }
+                        TimeField(hhmm: $workdayStart)
+                            .onChange(of: workdayStart) { _, new in
+                                PreferencesStore.shared.defaultWorkdayStart = new
+                            }
                         Text("Stop")
-                        TextField("", text: $workdayStop)
-                            .frame(width: 80)
-                            .onSubmit { PreferencesStore.shared.defaultWorkdayStop = workdayStop }
+                        TimeField(hhmm: $workdayStop)
+                            .onChange(of: workdayStop) { _, new in
+                                PreferencesStore.shared.defaultWorkdayStop = new
+                            }
                         Spacer()
                     }
                 }
