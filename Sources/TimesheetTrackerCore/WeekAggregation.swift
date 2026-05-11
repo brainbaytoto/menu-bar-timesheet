@@ -4,17 +4,27 @@ public enum WeekAggregation {
     public struct TaskTotal: Equatable {
         public let task: String
         public let totalSeconds: TimeInterval
+        public init(task: String, totalSeconds: TimeInterval) {
+            self.task = task
+            self.totalSeconds = totalSeconds
+        }
     }
 
     public struct DaySummary: Equatable {
         public let date: String
         public let totalSeconds: TimeInterval
         public let tasks: [TaskTotal]
+        public init(date: String, totalSeconds: TimeInterval, tasks: [TaskTotal]) {
+            self.date = date
+            self.totalSeconds = totalSeconds
+            self.tasks = tasks
+        }
     }
 
     public struct WeekSummary: Equatable {
         public let days: [DaySummary]
         public var totalSeconds: TimeInterval { days.reduce(0) { $0 + $1.totalSeconds } }
+        public init(days: [DaySummary]) { self.days = days }
     }
 
     /// 7-day window ending on the Thursday of (or following) `date`,
