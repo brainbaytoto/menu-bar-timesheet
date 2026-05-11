@@ -11,19 +11,19 @@ struct EntryEditorSheet: View {
 
     let day: String              // yyyy-MM-dd
     let mode: Mode
-    let onDone: () -> Void
-
-    @Environment(\.dismiss) private var dismiss
+    let onSave: () -> Void
+    let onCancel: () -> Void
 
     @State private var taskName: String
     @State private var startTime: Date
     @State private var stopTime: Date
     @State private var errorMessage: String?
 
-    init(day: String, mode: Mode, onDone: @escaping () -> Void) {
+    init(day: String, mode: Mode, onSave: @escaping () -> Void, onCancel: @escaping () -> Void) {
         self.day = day
         self.mode = mode
-        self.onDone = onDone
+        self.onSave = onSave
+        self.onCancel = onCancel
         let dayStart = Self.parseDay(day)
         switch mode {
         case .edit(let original):
@@ -94,7 +94,8 @@ struct EntryEditorSheet: View {
                     Button("Delete", role: .destructive, action: deleteEntry)
                 }
                 Spacer()
-                Button("Cancel") { dismiss() }
+                Button("Cancel") { onCancel() }
+                    .keyboardShortcut(.cancelAction)
                 Button("Save", action: saveEntry)
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
@@ -159,8 +160,7 @@ struct EntryEditorSheet: View {
                 dayLog.entries.append(newEntry)
             }
             try store.writeDay(dayLog)
-            onDone()
-            dismiss()
+            onSave()
         } catch {
             errorMessage = "Couldn't save: \(error.localizedDescription)"
         }
@@ -173,8 +173,7 @@ struct EntryEditorSheet: View {
             var dayLog = try store.readDay(day)
             dayLog.entries.removeAll { $0 == original }
             try store.writeDay(dayLog)
-            onDone()
-            dismiss()
+            onSave()
         } catch {
             errorMessage = "Couldn't delete: \(error.localizedDescription)"
         }

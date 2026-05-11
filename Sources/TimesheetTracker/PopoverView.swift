@@ -82,14 +82,6 @@ struct TodayList: View {
     let now: Date
     @State private var entries: [Entry] = []
     @State private var dailyTotal: TimeInterval = 0
-    @State private var editing: EditTarget?
-    @State private var refreshTick = 0
-
-    private struct EditTarget: Identifiable {
-        let id = UUID()
-        let day: String
-        let mode: EntryEditorSheet.Mode
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -98,7 +90,10 @@ struct TodayList: View {
                 Spacer()
                 Text(formatDuration(dailyTotal)).monospacedDigit().foregroundStyle(.secondary)
                 Button {
-                    editing = EditTarget(day: tracker.localDateString(for: Date()), mode: .create)
+                    EditorCoordinator.shared.open(
+                        day: tracker.localDateString(for: Date()),
+                        mode: .create
+                    ) { refresh() }
                 } label: {
                     Image(systemName: "plus.circle")
                 }
@@ -110,8 +105,11 @@ struct TodayList: View {
             } else {
                 ForEach(entries.indices, id: \.self) { i in
                     EntryRow(entry: entries[i]) {
-                        editing = EditTarget(day: tracker.localDateString(for: entries[i].start),
-                                             mode: .edit(original: entries[i]))
+                        let entry = entries[i]
+                        EditorCoordinator.shared.open(
+                            day: tracker.localDateString(for: entry.start),
+                            mode: .edit(original: entry)
+                        ) { refresh() }
                     }
                 }
                 if let task = tracker.runningTask, let since = tracker.runningSince {
@@ -130,13 +128,7 @@ struct TodayList: View {
         }
         .onAppear { refresh() }
         .onChange(of: tracker.runningTask) { _, _ in refresh() }
-        .onChange(of: refreshTick) { _, _ in refresh() }
         .onReceive(Timer.publish(every: 5, on: .main, in: .common).autoconnect()) { _ in refresh() }
-        .sheet(item: $editing) { target in
-            EntryEditorSheet(day: target.day, mode: target.mode) {
-                refreshTick &+= 1
-            }
-        }
     }
 
     private func refresh() {

@@ -5,14 +5,6 @@ struct WeekView: View {
     @EnvironmentObject var tracker: Tracker
     @State private var window: [String] = []
     @State private var dayLogs: [String: DayLog] = [:]
-    @State private var editing: EditTarget?
-    @State private var refreshTick = 0
-
-    private struct EditTarget: Identifiable {
-        let id = UUID()
-        let day: String
-        let mode: EntryEditorSheet.Mode
-    }
 
     var weekTotal: TimeInterval {
         window.reduce(0.0) { acc, day in
@@ -27,9 +19,13 @@ struct WeekView: View {
             } else {
                 ForEach(window, id: \.self) { day in
                     DayRow(day: day, entries: dayLogs[day]?.entries ?? []) { entry in
-                        editing = EditTarget(day: day, mode: .edit(original: entry))
+                        EditorCoordinator.shared.open(
+                            day: day, mode: .edit(original: entry)
+                        ) { refresh() }
                     } onAdd: {
-                        editing = EditTarget(day: day, mode: .create)
+                        EditorCoordinator.shared.open(
+                            day: day, mode: .create
+                        ) { refresh() }
                     }
                 }
                 Divider()
@@ -42,12 +38,6 @@ struct WeekView: View {
             }
         }
         .onAppear { refresh() }
-        .onChange(of: refreshTick) { _, _ in refresh() }
-        .sheet(item: $editing) { target in
-            EntryEditorSheet(day: target.day, mode: target.mode) {
-                refreshTick &+= 1
-            }
-        }
     }
 
     private func refresh() {
