@@ -80,7 +80,7 @@ struct EntryEditorSheet: View {
 
             HStack {
                 Text("Duration:").foregroundStyle(.secondary)
-                Text(formatDuration(stopTime.timeIntervalSince(startTime)))
+                Text(formatDuration(displayedDuration))
                     .monospacedDigit()
             }
             .font(.callout)
@@ -103,6 +103,19 @@ struct EntryEditorSheet: View {
         }
         .padding(20)
         .frame(width: 380)
+    }
+
+    /// Duration computed from the pickers with seconds stripped, so the preview
+    /// matches the value that will actually be saved (saveEntry forces second = 0).
+    private var displayedDuration: TimeInterval {
+        let cal = Calendar.current
+        let startMin = cal.date(bySettingHour: cal.component(.hour, from: startTime),
+                                 minute: cal.component(.minute, from: startTime),
+                                 second: 0, of: startTime) ?? startTime
+        let stopMin = cal.date(bySettingHour: cal.component(.hour, from: stopTime),
+                                minute: cal.component(.minute, from: stopTime),
+                                second: 0, of: stopTime) ?? stopTime
+        return stopMin.timeIntervalSince(startMin)
     }
 
     private var headerTitle: String {
