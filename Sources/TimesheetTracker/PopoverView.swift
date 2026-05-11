@@ -54,12 +54,12 @@ struct PopoverView: View {
                 Button("Quit") { NSApp.terminate(nil) }
                     .buttonStyle(.borderless)
                 Button {
-                    NSApp.activate(ignoringOtherApps: true)
-                    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                    PreferencesCoordinator.shared.open()
                 } label: {
                     Image(systemName: "gear")
                 }
                 .buttonStyle(.borderless)
+                .help("Preferences")
             }
         }
         .padding(14)
