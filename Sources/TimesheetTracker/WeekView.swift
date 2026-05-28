@@ -2,8 +2,8 @@ import SwiftUI
 import TimesheetTrackerCore
 
 struct WeekView: View {
+    let window: [String]
     @EnvironmentObject var tracker: Tracker
-    @State private var window: [String] = []
     @State private var dayLogs: [String: DayLog] = [:]
 
     var weekTotal: TimeInterval {
@@ -38,11 +38,11 @@ struct WeekView: View {
             }
         }
         .onAppear { refresh() }
+        .onChange(of: window) { refresh() }
     }
 
     private func refresh() {
         let store = LogStore(rootDirectory: AppPaths.applicationSupportDirectory)
-        window = WeekAggregation.fridayToThursdayWindow(endingOn: Date())
         var logs: [String: DayLog] = [:]
         for day in window {
             if let log = try? store.readDay(day) { logs[day] = log }

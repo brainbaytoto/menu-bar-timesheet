@@ -18,6 +18,25 @@ final class WeekAggregationTests: XCTestCase {
         XCTAssertEqual(range.count, 7)
     }
 
+    func test_lastWeekWindowFromFridayReturnsPriorFridayToThursday() {
+        let friday = ymd("2026-05-29")
+        let window = WeekAggregation.lastWeekWindow(relativeTo: friday)
+        XCTAssertEqual(window, [
+            "2026-05-22", "2026-05-23", "2026-05-24", "2026-05-25",
+            "2026-05-26", "2026-05-27", "2026-05-28",
+        ])
+    }
+
+    func test_lastWeekWindowFromThursdayReturnsPriorWeekNotCurrent() {
+        let thursday = ymd("2026-06-04")
+        let window = WeekAggregation.lastWeekWindow(relativeTo: thursday)
+        XCTAssertEqual(window.count, 7)
+        XCTAssertEqual(window, [
+            "2026-05-22", "2026-05-23", "2026-05-24", "2026-05-25",
+            "2026-05-26", "2026-05-27", "2026-05-28",
+        ])
+    }
+
     func test_emptyWeekHasZeroTotals() {
         let summary = WeekAggregation.summarize(
             days: [],

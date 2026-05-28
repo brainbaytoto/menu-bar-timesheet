@@ -44,6 +44,12 @@ public enum WeekAggregation {
         }
     }
 
+    /// The Friday→Thursday window for the week *before* the one containing `date`.
+    public static func lastWeekWindow(relativeTo date: Date = Date(), calendar: Calendar = .current) -> [String] {
+        let priorWeekDate = calendar.date(byAdding: .day, value: -7, to: date) ?? date
+        return fridayToThursdayWindow(endingOn: priorWeekDate, calendar: calendar)
+    }
+
     public static func summarize(days: [DayLog], window: [String]) -> WeekSummary {
         let byDate = Dictionary(uniqueKeysWithValues: days.map { ($0.date, $0) })
         let summaries = window.map { date -> DaySummary in

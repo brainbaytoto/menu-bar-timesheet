@@ -8,6 +8,7 @@ struct PopoverView: View {
     @FocusState private var inputFocused: Bool
     @State private var tickNow = Date()
     @State private var weekExpanded = false
+    @State private var lastWeekExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -44,9 +45,15 @@ struct PopoverView: View {
             Divider()
 
             DisclosureGroup(isExpanded: $weekExpanded) {
-                WeekView()
+                WeekView(window: WeekAggregation.fridayToThursdayWindow(endingOn: tickNow))
             } label: {
                 Text("This week").font(.callout)
+            }
+
+            DisclosureGroup(isExpanded: $lastWeekExpanded) {
+                WeekView(window: WeekAggregation.lastWeekWindow(relativeTo: tickNow))
+            } label: {
+                Text("Last week").font(.callout)
             }
 
             HStack {
