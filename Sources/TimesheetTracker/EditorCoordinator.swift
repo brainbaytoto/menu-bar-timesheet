@@ -52,6 +52,45 @@ final class EditorCoordinator {
         window = w
     }
 
+    func openRunningEditor(task: String, start: Date,
+                           onSave: @escaping (String, Date) -> Void,
+                           onCancel: @escaping () -> Void) {
+        closeWindow()
+
+        let view = RunningEditorSheet(
+            task: task,
+            start: start,
+            onSave: { [weak self] newTask, newStart in
+                onSave(newTask, newStart)
+                self?.closeWindow()
+            },
+            onCancel: { [weak self] in
+                onCancel()
+                self?.closeWindow()
+            }
+        )
+
+        let hosting = NSHostingController(rootView: view)
+        let w = NSWindow(contentViewController: hosting)
+        w.title = "Edit running activity"
+        w.styleMask = [.titled, .closable]
+        w.isReleasedWhenClosed = false
+        w.level = .floating
+        w.center()
+        w.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        if let observer = closeObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        closeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification, object: w, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.window = nil }
+        }
+        window = w
+    }
+
     private func closeWindow() {
         window?.close()
         window = nil

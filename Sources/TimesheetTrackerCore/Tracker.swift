@@ -45,6 +45,20 @@ public final class Tracker: ObservableObject {
         runningSince = nil
     }
 
+    /// Adjust the start time and/or task of the currently running session.
+    /// Rejects (returns false) when nothing is running, the task is blank, or the
+    /// proposed start is in the future. Persists the change to the sidecar.
+    @discardableResult
+    public func adjustRunningSession(task rawTask: String, start: Date) -> Bool {
+        guard runningTask != nil else { return false }
+        let task = rawTask.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !task.isEmpty, start <= clock.now() else { return false }
+        runningTask = task
+        runningSince = start
+        try? sidecar.write(CurrentSession(task: task, startedAt: start))
+        return true
+    }
+
     public func localDateString(for date: Date) -> String {
         let fmt = DateFormatter()
         fmt.dateFormat = "yyyy-MM-dd"

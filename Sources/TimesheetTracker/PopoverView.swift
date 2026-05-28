@@ -30,13 +30,27 @@ struct PopoverView: View {
             }
 
             if let task = tracker.runningTask, let since = tracker.runningSince {
-                HStack {
-                    Image(systemName: "circle.fill").foregroundStyle(.red).font(.caption)
-                    Text("Running: \(task)").bold().lineLimit(1)
-                    Spacer()
-                    Text(formatDuration(tickNow.timeIntervalSince(since)))
-                        .monospacedDigit().foregroundStyle(.secondary)
+                Button {
+                    EditorCoordinator.shared.openRunningEditor(
+                        task: task, start: since,
+                        onSave: { newTask, newStart in
+                            tracker.adjustRunningSession(task: newTask, start: newStart)
+                        },
+                        onCancel: {}
+                    )
+                } label: {
+                    HStack {
+                        Image(systemName: "circle.fill").foregroundStyle(.red).font(.caption)
+                        Text("Running: \(task)").bold().lineLimit(1)
+                        Image(systemName: "pencil").font(.caption2).foregroundStyle(.secondary)
+                        Spacer()
+                        Text(formatDuration(tickNow.timeIntervalSince(since)))
+                            .monospacedDigit().foregroundStyle(.secondary)
+                    }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .help("Edit the running activity")
                 .font(.callout)
             }
 

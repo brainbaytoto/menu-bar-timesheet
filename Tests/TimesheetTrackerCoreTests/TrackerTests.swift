@@ -107,6 +107,46 @@ final class TrackerTests: XCTestCase {
         XCTAssertEqual(resumed.runningSince, pretendStart)
     }
 
+    // MARK: Edit running session
+
+    func test_adjustRunningSessionAppliesNewStartAndTaskAndWritesSidecar() throws {
+        tracker.start(task: "Typo")
+        clock.advance(by: 600)
+        let earlierStart = tracker.runningSince!.addingTimeInterval(-900)
+        let result = tracker.adjustRunningSession(task: "Fixed name", start: earlierStart)
+        XCTAssertTrue(result)
+        XCTAssertEqual(tracker.runningTask, "Fixed name")
+        XCTAssertEqual(tracker.runningSince, earlierStart)
+        let session = try sidecar.read()
+        XCTAssertEqual(session?.task, "Fixed name")
+        XCTAssertEqual(session?.startedAt, earlierStart)
+    }
+
+    func test_adjustRunningSessionNoOpWhenNothingRunning() {
+        let result = tracker.adjustRunningSession(task: "X", start: clock.currentTime)
+        XCTAssertFalse(result)
+        XCTAssertNil(tracker.runningTask)
+        XCTAssertNil(tracker.runningSince)
+    }
+
+    func test_adjustRunningSessionRejectsFutureStart() {
+        tracker.start(task: "Now")
+        let originalStart = tracker.runningSince
+        let future = clock.currentTime.addingTimeInterval(60)
+        let result = tracker.adjustRunningSession(task: "Now", start: future)
+        XCTAssertFalse(result)
+        XCTAssertEqual(tracker.runningSince, originalStart)
+    }
+
+    func test_adjustRunningSessionRejectsEmptyTask() {
+        tracker.start(task: "Keep")
+        let originalStart = tracker.runningSince
+        let result = tracker.adjustRunningSession(task: "   ", start: originalStart!)
+        XCTAssertFalse(result)
+        XCTAssertEqual(tracker.runningTask, "Keep")
+        XCTAssertEqual(tracker.runningSince, originalStart)
+    }
+
     // MARK: Midnight crossing
 
     func test_midnightCrossSplitsSessionIntoTwoEntries() throws {
